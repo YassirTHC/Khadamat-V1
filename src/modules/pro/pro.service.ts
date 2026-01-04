@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { CreateProServiceDto } from './dtos/create-pro-service.dto';
@@ -17,11 +18,13 @@ type ProWithServices = Prisma.ProProfileGetPayload<{
       select: {
         id: true;
         email: false;
-        phone: false;
+        phone: true;
         role: true;
         status: true;
         lastLogin: true;
         createdAt: true;
+        phoneVerifiedAt: true;
+        cguAcceptedAt: true;
       };
     };
     city: true;
@@ -36,6 +39,19 @@ type ProWithServices = Prisma.ProProfileGetPayload<{
 export class ProService {
   constructor(private prisma: PrismaService) {}
 
+  private computeEligibility(profile: ProWithServices) {
+    const missingFields: string[] = [];
+    const bioLength = profile.bio?.trim().length ?? 0;
+    const activeServices = (profile.proServices || []).filter((s) => s.isActive).length;
+    if (!profile.user?.phoneVerifiedAt) missingFields.push('phone');
+    if (!profile.user?.cguAcceptedAt) missingFields.push('cgu');
+    if (!profile.cityId) missingFields.push('city');
+    if (bioLength < 50) missingFields.push('bio');
+    if (activeServices === 0) missingFields.push('service');
+    const isActiveEligible = missingFields.length === 0;
+    return { isActiveEligible, missingFields };
+  }
+
   // Profile management
   async getProProfile(proId: string) {
     const profile = await this.prisma.proProfile.findUnique({
@@ -48,6 +64,7 @@ export class ProService {
             serviceCategory: true,
             city: true,
           },
+          where: { isActive: true },
         },
         subscriptions: {
           include: {
@@ -62,7 +79,17 @@ export class ProService {
       throw new NotFoundException('Pro profile not found');
     }
 
-    return profile;
+    const verificationStatus = profile.verificationStatus ?? (profile.isVerifiedPro ? 'APPROVED' : 'PENDING');
+    const isVerified = verificationStatus === 'APPROVED';
+    const { isActiveEligible, missingFields } = this.computeEligibility(profile as ProWithServices);
+
+    return {
+      ...profile,
+      verificationStatus,
+      isVerified,
+      isActiveEligible,
+      missingFields,
+    };
   }
 
   async updateProProfile(proId: string, data: UpdateProProfileDto) {
@@ -113,12 +140,17 @@ export class ProService {
       throw new NotFoundException('City not found');
     }
 
+    if (dto.pricingType === 'FIXED' && dto.basePrice === undefined) {
+      throw new BadRequestException('basePrice is required for FIXED pricingType');
+    }
+
     return this.prisma.proService.create({
       data: {
         proProfileId: proProfile.id,
         serviceCategoryId: dto.categoryId,
         cityId: dto.cityId,
-        basePrice: dto.basePrice,
+        pricingType: dto.pricingType,
+        basePrice: dto.basePrice ?? null,
         description: dto.description,
       },
       include: {
@@ -170,6 +202,12 @@ export class ProService {
     const data: any = {};
     if (dto.categoryId !== undefined) data.serviceCategoryId = dto.categoryId;
     if (dto.cityId !== undefined) data.cityId = dto.cityId;
+    if (dto.pricingType !== undefined) {
+      data.pricingType = dto.pricingType;
+      if (dto.pricingType === 'QUOTE') {
+        data.basePrice = null;
+      }
+    }
     if (dto.basePrice !== undefined) data.basePrice = dto.basePrice;
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
@@ -219,13 +257,21 @@ export class ProService {
     const [totalBookings, completedBookings, pendingBookings, averageRating] =
       await Promise.all([
         this.prisma.booking.count({
-          where: { proId, status: { not: BookingStatus.CANCELLED } },
+          where: {
+            proId,
+            status: {
+              notIn: [BookingStatus.CANCELLED_BY_CLIENT, BookingStatus.CANCELLED_BY_PRO],
+            },
+          },
         }),
         this.prisma.booking.count({
           where: { proId, status: BookingStatus.COMPLETED },
         }),
         this.prisma.booking.count({
-          where: { proId, status: BookingStatus.QUOTED },
+          where: {
+            proId,
+            status: { in: [BookingStatus.REQUESTED, BookingStatus.ACCEPTED] },
+          },
         }),
         this.prisma.review.aggregate({
           where: { proId },
@@ -297,9 +343,11 @@ export class ProService {
             select: {
               id: true,
               email: false, // Don't expose email
-              phone: false, // Don't expose phone
+              phone: true,
               role: true,
               status: true,
+              cguAcceptedAt: true,
+              phoneVerifiedAt: true,
               lastLogin: true,
               createdAt: true,
             },
@@ -348,6 +396,7 @@ export class ProService {
             id: true,
             role: true,
             status: true,
+            phone: true,
             lastLogin: true,
             createdAt: true,
           },

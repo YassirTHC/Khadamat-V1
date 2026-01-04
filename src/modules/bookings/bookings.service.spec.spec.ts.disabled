@@ -59,7 +59,7 @@ describe('BookingsService', () => {
         serviceCategoryId: 'category-id',
         cityId: 'city-id',
         description: 'Test booking',
-        scheduledDate: '2025-12-01T10:00:00Z',
+        timeSlot: '2025-12-01T10:00:00Z',
       };
 
       const mockPro = { id: 'pro-id', status: 'active', proProfile: {} };
@@ -102,7 +102,7 @@ describe('BookingsService', () => {
         serviceCategoryId: 'category-id',
         cityId: 'city-id',
         description: 'Test booking',
-        scheduledDate: '2020-01-01T10:00:00Z', // Past date
+        timeSlot: '2020-01-01T10:00:00Z', // Past date
       };
 
       const mockPro = { id: 'pro-id', status: 'active', proProfile: {} };

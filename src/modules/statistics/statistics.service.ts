@@ -12,7 +12,7 @@ export class StatisticsService {
       where: {
         clientId: userId,
         status: {
-          in: [BookingStatus.QUOTED, BookingStatus.ACCEPTED],
+          in: [BookingStatus.REQUESTED, BookingStatus.ACCEPTED],
         },
       },
     });
@@ -63,7 +63,7 @@ export class StatisticsService {
       this.prisma.booking.count(),
       this.prisma.booking.count({
         where: {
-          status: { in: [BookingStatus.QUOTED, BookingStatus.ACCEPTED] },
+          status: { in: [BookingStatus.REQUESTED, BookingStatus.ACCEPTED] },
         },
       }),
       this.prisma.proService.count(),
@@ -111,7 +111,7 @@ export class StatisticsService {
       where: {
         proId: userId,
         status: {
-          in: [BookingStatus.QUOTED, BookingStatus.ACCEPTED],
+          in: [BookingStatus.REQUESTED, BookingStatus.ACCEPTED],
         },
       },
     });

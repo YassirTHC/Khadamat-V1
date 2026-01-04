@@ -20,7 +20,10 @@ const nextConfig = {
 
   compiler: {
     styledComponents: true,
-    reactRemoveProperties: true,
+    // Garder les attributs data-* en dev/test (E2E) pour les sélecteurs Playwright
+    reactRemoveProperties: process.env.NODE_ENV === 'production'
+      ? { properties: ['^data-test'] }
+      : false,
     removeConsole: process.env.NODE_ENV === 'production'
       ? { exclude: ['error', 'warn'] }
       : false,

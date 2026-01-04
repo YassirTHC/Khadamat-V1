@@ -1,7 +1,7 @@
-import { IsUUID, IsOptional, IsBoolean } from 'class-validator';
+import { IsOptional, IsBoolean, IsString } from 'class-validator';
 
 export class CreateSubscriptionDto {
-  @IsUUID()
+  @IsString()
   subscriptionPlanId: string;
 
   @IsOptional()

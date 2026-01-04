@@ -28,6 +28,7 @@ import { DatabaseModule } from './common/database.module';
 import { CacheInterceptor } from './common/cache.interceptor';
 import { QueuesModule } from './modules/queues/queues.module';
 import { RedisProviderModule as RedisModule } from './common/redis/redis.provider';
+import { CommunicationEventsModule } from './modules/communication-events/communication-events.module';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 @Module({
@@ -77,6 +78,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
     StatisticsModule,
     MetricsModule,
     QueuesModule,
+    CommunicationEventsModule,
   ],
   controllers: [AppController],
   providers: [

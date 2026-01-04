@@ -151,8 +151,7 @@ class ApiClient {
     cityId: string;
     description: string;
     photos?: string[];
-    scheduledDate?: string;
-    timeSlot?: string;
+    timeSlot: string;
     priceEstimate?: number;
   }): Promise<void> {
     await apiClient.post('/bookings', data);

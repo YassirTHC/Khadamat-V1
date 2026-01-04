@@ -874,8 +874,7 @@ describe('Khadamat API (e2e)', () => {
         serviceCategoryId: testData.categories.menageCategory.id,
         cityId: testData.cities.casablanca.id,
         description: 'Need house cleaning service',
-        scheduledDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
-        timeSlot: '10:00-12:00',
+        timeSlot: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow on the hour
       };
 
       const bookingResponse = await testUtils.createAuthenticatedRequest(clientToken)
@@ -884,18 +883,18 @@ describe('Khadamat API (e2e)', () => {
         .expect(201);
 
       const bookingId = bookingResponse.body.id;
-      expect(bookingResponse.body.status).toBe('requested');
+      expect(bookingResponse.body.status).toBe('REQUESTED');
 
       // 2. Pro accepts booking
       await testUtils.createAuthenticatedRequest(proToken)
         .put(`/bookings/${bookingId}/status`)
-        .send({ status: 'accepted' })
+        .send({ status: 'ACCEPTED' })
         .expect(200);
 
       // 3. Pro completes booking
       await testUtils.createAuthenticatedRequest(proToken)
         .put(`/bookings/${bookingId}/status`)
-        .send({ status: 'completed' })
+        .send({ status: 'COMPLETED' })
         .expect(200);
 
       // 4. Client can see completed booking
@@ -903,8 +902,7 @@ describe('Khadamat API (e2e)', () => {
         .get(`/bookings/${bookingId}`)
         .expect(200);
 
-      expect(finalBooking.body.status).toBe('completed');
-      expect(finalBooking.body).toHaveProperty('scheduledDate');
+      expect(finalBooking.body.status).toBe('COMPLETED');
       expect(finalBooking.body).toHaveProperty('timeSlot');
     });
 
@@ -915,6 +913,7 @@ describe('Khadamat API (e2e)', () => {
         serviceCategoryId: testData.categories.menageCategory.id,
         cityId: testData.cities.casablanca.id,
         description: 'Need house cleaning service',
+        timeSlot: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
       };
 
       const bookingResponse = await testUtils.createAuthenticatedRequest(clientToken)
@@ -927,7 +926,7 @@ describe('Khadamat API (e2e)', () => {
       // Pro rejects booking
       await testUtils.createAuthenticatedRequest(proToken)
         .put(`/bookings/${bookingId}/status`)
-        .send({ status: 'rejected' })
+        .send({ status: 'DECLINED' })
         .expect(200);
 
       // Check final status
@@ -935,7 +934,7 @@ describe('Khadamat API (e2e)', () => {
         .get(`/bookings/${bookingId}`)
         .expect(200);
 
-      expect(finalBooking.body.status).toBe('rejected');
+      expect(finalBooking.body.status).toBe('DECLINED');
     });
   });
 });

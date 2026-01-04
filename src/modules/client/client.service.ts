@@ -48,13 +48,24 @@ export class ClientService {
     const [totalBookings, completedBookings, pendingBookings, totalSpent] =
       await Promise.all([
         this.prisma.booking.count({
-          where: { clientId, status: { not: BookingStatus.CANCELLED } },
+          where: {
+            clientId,
+            status: {
+              notIn: [
+                BookingStatus.CANCELLED_BY_CLIENT,
+                BookingStatus.CANCELLED_BY_PRO,
+              ],
+            },
+          },
         }),
         this.prisma.booking.count({
           where: { clientId, status: BookingStatus.COMPLETED },
         }),
         this.prisma.booking.count({
-          where: { clientId, status: BookingStatus.QUOTED },
+          where: {
+            clientId,
+            status: { in: [BookingStatus.REQUESTED, BookingStatus.ACCEPTED] },
+          },
         }),
         this.prisma.booking.aggregate({
           where: { clientId, status: BookingStatus.COMPLETED },

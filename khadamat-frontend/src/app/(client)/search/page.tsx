@@ -1,9 +1,6 @@
 'use client';
 
-import { useSafeData } from '@/hooks/useSafeData';
-import apiClient from '@/lib/api/client';
 import { Professional } from '@/lib/mocks/services-mocks';
-import { useMemo } from 'react';
 
 export default function SearchPage() {
   const searchQuery = (typeof window !== 'undefined') ? (new URLSearchParams(window.location.search).get('q') || '') : '';

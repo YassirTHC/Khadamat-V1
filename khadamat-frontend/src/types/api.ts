@@ -14,12 +14,13 @@ export interface User {
 
 // ✅ CORRECTION : L'enum manquant (Indispensable pour le dashboard)
 export enum BookingStatus {
-  PENDING = 'PENDING',
-  CONFIRMED = 'CONFIRMED',
-  IN_PROGRESS = 'IN_PROGRESS',
+  REQUESTED = 'REQUESTED',
+  ACCEPTED = 'ACCEPTED',
+  DECLINED = 'DECLINED',
+  CANCELLED_BY_CLIENT = 'CANCELLED_BY_CLIENT',
+  CANCELLED_BY_PRO = 'CANCELLED_BY_PRO',
   COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-  REJECTED = 'REJECTED'
+  EXPIRED = 'EXPIRED',
 }
 
 export interface SignupDto {
@@ -52,6 +53,8 @@ export interface PlatformStats {
   totalClients: number;
   totalBookings: number;
   averageRating: number;
+  totalServices?: number;
+  totalCities?: number;
 }
 
 export interface ProProfile {
@@ -62,8 +65,11 @@ export interface ProProfile {
   profession: string;
   bio?: string;
   experienceYears?: number;
+  verificationStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
   isVerified: boolean;
   isPremium: boolean;
+  isActiveEligible?: boolean;
+  missingFields?: string[];
   rating?: number;
   reviewCount?: number;
   cityId?: string;
@@ -80,6 +86,8 @@ export interface ClientProfile {
   firstName: string;
   lastName: string;
   phone?: string;
+  address?: string;
+   avatar?: string;
   avatarUrl?: string;
 }
 
@@ -89,6 +97,7 @@ export interface City {
   region?: string;
   latitude?: number;
   longitude?: number;
+  isActive?: boolean;
 }
 
 export interface ServiceCategory {
@@ -101,25 +110,32 @@ export interface ServiceCategory {
 
 export interface ProService {
   id: string;
-  proId: string;
+  proUserId?: string;
+  proId?: string; // legacy
   categoryId: string;
   category: ServiceCategory;
+  pricingType: 'FIXED' | 'QUOTE';
   title: string;
   description: string;
-  price: number;
+  price?: number | null;
+  basePrice?: number | null;
   duration?: number;
   isActive: boolean;
+  cityId?: string;
+  serviceCategoryId?: string;
 }
 
 export interface Booking {
   id: string;
   clientId: string;
-  proId: string;
+  proUserId?: string;
+  proId?: string; // legacy alias
   serviceId: string;
+  serviceCategory?: { name?: string; id?: string };
+  city?: { name?: string; id?: string };
   status: BookingStatus;
   description: string;
-  scheduledDate?: string;
-  timeSlot?: string;
+  timeSlot: string;
   priceEstimate?: number;
   photos?: string[];
   createdAt: string;
@@ -127,4 +143,39 @@ export interface Booking {
   client?: User;
   pro?: ProProfile;
   service?: ProService;
+}
+
+export interface CreateBookingPayload {
+  proUserId: string;
+  serviceCategoryId: string;
+  cityId: string;
+  timeSlot: string;
+  description: string;
+  pricingType?: 'FIXED' | 'QUOTE';
+  // legacy alias should not be used; kept for compile-time guard
+  proId?: never;
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  senderId?: string;
+  createdAt?: string;
+  sender?: {
+    clientProfile?: ClientProfile;
+    proProfile?: ProProfile;
+    email?: string;
+  };
+  readAt?: string;
+}
+
+export interface Conversation {
+  id: string;
+  messages?: Message[];
+  pro?: ProProfile;
+  client?: ClientProfile;
+  booking?: Booking;
+  updatedAt?: string;
+  participant1Id?: string;
+  participant2Id?: string;
 }

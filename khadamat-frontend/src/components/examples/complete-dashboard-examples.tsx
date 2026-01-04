@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { PersonalizedRecommendations } from '@/components/client/personalized-recommendations';
-import { AdvancedBookingManager } from '@/components/client/advanced-booking-manager';
 import { TrustBadgeSystem, ClientSuccessStories, TrustIndicators } from '@/components/client/trust-badge-system';
 import { CustomizableDashboard } from '@/components/pro/customizable-dashboard';
 import { AIBusinessInsights } from '@/components/pro/ai-business-insights';
@@ -36,10 +35,6 @@ export const CompleteClientDashboard: React.FC = () => {
   // Mock user data
   const userId = 'client-123';
   const bookingHistory: string[] = [];
-
-  const handleBookingAction = (action: string, bookingId: string) => {
-    console.log(`Action: ${action} on booking: ${bookingId}`);
-  };
 
   return (
     <div className="min-h-screen bg-[#FAF7F2]">
@@ -99,12 +94,6 @@ export const CompleteClientDashboard: React.FC = () => {
           </section>
 
           {/* Advanced Booking Manager */}
-          <section>
-            <AdvancedBookingManager
-              onBookingAction={handleBookingAction}
-            />
-          </section>
-
           {/* Trust & Social Proof Section */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ClientSuccessStories maxStories={3} />

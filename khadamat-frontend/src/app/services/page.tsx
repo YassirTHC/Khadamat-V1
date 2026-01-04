@@ -1,13 +1,68 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/header';
-import { ServiceGrid } from '@/components/services/service-grid';
-import { ServiceFilters as ServiceFiltersComponent } from '@/components/services/service-filters';
-import { useServiceFilters } from '@/hooks/useServiceFilters';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { api } from '@/lib/api';
+import { mockCategories } from '@/lib/mocks/services-mocks';
+
+type Category = { id: string; name: string; description?: string };
+
+const CategoryCard: React.FC<{ category: Category }> = ({ category }) => {
+  return (
+    <Link href={`/pros?categoryId=${category.id}`} data-testid="service-category-card">
+      <Card className="h-full p-6 shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 bg-white/80">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-gray-900">{category.name}</h3>
+          <Badge>Catégorie</Badge>
+        </div>
+        <p className="text-sm text-gray-600">
+          {category.description || 'Voir les professionnels disponibles pour cette catégorie.'}
+        </p>
+        <div className="mt-4 text-sm text-primary-600 font-semibold">Voir les pros →</div>
+      </Card>
+    </Link>
+  );
+};
 
 const ServicesPageContent = () => {
-  const { filters, setFilters, resetFilters } = useServiceFilters();
+  const router = useRouter();
+  const [categories, setCategories] = useState<Category[]>(mockCategories as any);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Compat: si un lien legacy pointe vers /services?categoryId=..., rediriger vers /pros
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('categoryId')) {
+        router.replace(`/pros?${params.toString()}`);
+        return;
+      }
+    }
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await api.getCategories();
+        const normalized = Array.isArray(res)
+          ? res
+          : res?.categories || res?.items || [];
+        if (Array.isArray(normalized) && normalized.length) {
+          setCategories(
+            normalized.map((c: any) => ({ id: c.id, name: c.name, description: c.description })),
+          );
+        }
+      } catch (err) {
+        console.warn('Using fallback categories', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -21,34 +76,27 @@ const ServicesPageContent = () => {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.02)_1px,transparent_0)] bg-[length:24px_24px] opacity-20"></div>
           </div>
 
-          <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <h1 className="text-h1 font-bold text-text-primary leading-tight tracking-tight font-heading mb-4">
-                Tous les services disponibles sur Khadamat
+                Trouvez un service par catégorie
               </h1>
               <p className="text-body text-text-secondary leading-relaxed font-body mb-8 max-w-2xl mx-auto">
-                DAccouvrez les services proposAcs et trouvez un professionnel dans votre ville.
+                Choisissez une catégorie et découvrez les professionnels disponibles dans votre ville.
               </p>
             </div>
           </div>
         </section>
 
         <section className="py-8 bg-gradient-to-br from-[rgba(250,247,242,0.8)] to-[rgba(255,255,255,0.5)] backdrop-blur-sm">
-          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-4 gap-8">
-              <aside className="lg:col-span-1">
-                <div className="sticky top-24">
-                  <ServiceFiltersComponent
-                    filters={filters}
-                    onFiltersChange={setFilters}
-                    onClearFilters={resetFilters}
-                  />
-                </div>
-              </aside>
-
-              <div className="lg:col-span-3">
-                <ServiceGrid filters={filters} />
-              </div>
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categories.map((cat) => (
+                <CategoryCard key={cat.id} category={cat} />
+              ))}
+              {loading && categories.length === 0 && (
+                <div className="col-span-full text-center text-gray-500">Chargement des catégories...</div>
+              )}
             </div>
           </div>
         </section>
@@ -59,24 +107,26 @@ const ServicesPageContent = () => {
 
 export default function ServicesPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="pt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="animate-pulse space-y-8">
-              <div className="h-8 bg-surface rounded w-1/3"></div>
-              <div className="h-12 bg-surface rounded w-full"></div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="h-64 bg-surface rounded"></div>
-                ))}
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background">
+          <Header />
+          <main className="pt-16">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+              <div className="animate-pulse space-y-8">
+                <div className="h-8 bg-surface rounded w-1/3"></div>
+                <div className="h-12 bg-surface rounded w-full"></div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="h-64 bg-surface rounded"></div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </main>
-      </div>
-    }>
+          </main>
+        </div>
+      }
+    >
       <ServicesPageContent />
     </Suspense>
   );

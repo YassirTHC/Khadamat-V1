@@ -182,6 +182,7 @@ export function DashboardSidebar({
             onClick={handleLogoutClick}
             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             title="Se déconnecter"
+            data-testid="dashboard-logout"
           >
             <LogOut className="w-5 h-5" />
           </button>

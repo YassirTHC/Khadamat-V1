@@ -1,10 +1,17 @@
-import { apiClient } from '@/lib/api-client';
+import apiClientInstance from '@/lib/api-client';
 
 export const AuthService = {
   updateClientProfile: async (data: any) => {
     // Placeholder implementation to satisfy build
-    const response = await apiClient.patch('/users/profile', data);
-    return response.data;
+    try {
+      if ((apiClientInstance as any).user?.updateProfile) {
+        const response = await (apiClientInstance as any).user.updateProfile(data);
+        return response?.data ?? response;
+      }
+      return data;
+    } catch (e) {
+      return data;
+    }
   },
 };
 

@@ -13,11 +13,12 @@ export interface BackendProfessional {
   id: string;
   user: {
     id: string;
+    phone?: string;
   };
   firstName: string;
   lastName: string;
   profession: string;
-  averageRating: number;
+  averageRating?: number;
   isVerifiedPro: boolean;
    isPremium?: boolean;
    totalReviews?: number;
@@ -35,7 +36,9 @@ export interface BackendProService {
   serviceCategory?: {
     name: string;
   };
-  basePrice: number;
+  pricingType?: 'FIXED' | 'QUOTE';
+  basePrice?: number | null;
+  cityId?: string;
   description?: string;
   isActive: boolean;
   createdAt: string;
@@ -57,12 +60,21 @@ interface BackendProDetail extends BackendProfessional {
   totalReviews?: number;
   bio?: string;
   averageRating?: number;
+  contactPhone?: string;
 }
 
 interface BackendBooking {
   id: string;
-  status: 'requested' | 'accepted' | 'rejected' | 'canceled' | 'completed';
-  scheduledDate: string;
+  status:
+    | 'REQUESTED'
+    | 'ACCEPTED'
+    | 'DECLINED'
+    | 'CANCELLED_BY_CLIENT'
+    | 'CANCELLED_BY_PRO'
+    | 'COMPLETED'
+    | 'EXPIRED'
+    | string;
+  timeSlot?: string;
   createdAt: string;
   updatedAt: string;
   client?: {
@@ -85,7 +97,7 @@ interface BackendBooking {
     name: string;
   };
   city?: {
-    name: string;
+    name?: string;
   };
   description?: string;
   priceEstimate?: number;
@@ -93,13 +105,15 @@ interface BackendBooking {
 }
 
 // Status mapping
-const STATUS_MAPPING = {
-  requested: 'pending',
-  accepted: 'confirmed',
-  rejected: 'cancelled',
-  canceled: 'cancelled',
-  completed: 'completed',
-} as const;
+const STATUS_MAPPING: Record<string, string> = {
+  REQUESTED: 'pending',
+  ACCEPTED: 'confirmed',
+  DECLINED: 'cancelled',
+  CANCELLED_BY_CLIENT: 'cancelled',
+  CANCELLED_BY_PRO: 'cancelled',
+  COMPLETED: 'completed',
+  EXPIRED: 'expired',
+};
 
 // Generate random Unsplash images
 function generatePortfolioImages(keywords: string[] = ['repair', 'work']): string[] {
@@ -121,16 +135,6 @@ function generateAvatar(name: string): string {
   return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`;
 }
 
-// Format date to French readable format
-function formatDateToFrench(isoDate: string): string {
-  const date = new Date(isoDate);
-  return date.toLocaleDateString('fr-FR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
 // Transform backend professional to frontend format
 export function transformProfessional(pro: BackendProfessional, preferredCategoryId?: string): Professional {
   const fullName = `${pro.firstName} ${pro.lastName}`.trim();
@@ -144,7 +148,11 @@ export function transformProfessional(pro: BackendProfessional, preferredCategor
   const cityId = pro.city?.id || pro.city?.name || chosenService?.cityId || '';
   const cityName = chosenService?.city?.name || pro.city?.name;
   const serviceCategoryId = chosenService?.serviceCategoryId || services[0]?.serviceCategoryId || '';
-  const serviceCategoryName = chosenService?.serviceCategory?.name || services[0]?.serviceCategory?.name;
+  const serviceCategoryName =
+    chosenService?.serviceCategory?.name ||
+    services[0]?.serviceCategory?.name ||
+    chosenService?.serviceCategoryId ||
+    pro.profession;
 
   return {
     id: pro.user.id,
@@ -152,9 +160,10 @@ export function transformProfessional(pro: BackendProfessional, preferredCategor
     avatarUrl: generateAvatar(fullName),
     cityId,
     serviceCategoryId,
-    title: pro.profession,
+    // Afficher la catégorie filtrée en priorité pour éviter la confusion (ex: filtre ménage)
+    title: serviceCategoryName || pro.profession,
     shortBio: '', // Backend doesn't provide this
-    rating: pro.averageRating,
+    rating: pro.averageRating ?? 0,
     reviewCount: totalReviews,
     isVerified: pro.isVerifiedPro,
     isPremium,
@@ -174,11 +183,17 @@ export function transformProDetail(pro: BackendProDetail): ProfessionalDetail {
 
   const services: ProfessionalService[] = (pro.proServices || []).map((service) => ({
     id: service.id,
+    proUserId: pro.user?.id || pro.id,
+    proId: pro.user?.id || pro.id, // legacy
     name: service.serviceCategory?.name || 'Service',
     description: service.description || '',
-    price: service.basePrice || 0,
+    price: service.basePrice ?? 0,
+    pricingType: service.pricingType || 'FIXED',
     duration: '1h',
     category: service.serviceCategory?.name || '',
+    basePrice: service.basePrice ?? null,
+    serviceCategoryId: service.serviceCategoryId,
+    cityId: service.city?.id || service.cityId,
   }));
 
   return {
@@ -217,6 +232,7 @@ export function transformProDetail(pro: BackendProDetail): ProfessionalDetail {
       saturday: '10:00 - 14:00',
       sunday: 'FermAc',
     },
+    contactPhone: pro.user?.phone || pro.contactPhone,
   };
 }
 
@@ -225,6 +241,7 @@ export function transformProBooking(booking: BackendBooking): ProBooking {
   const clientName = booking.client?.clientProfile
     ? `${booking.client.clientProfile.firstName} ${booking.client.clientProfile.lastName}`.trim()
     : 'Client';
+  const slot = booking.timeSlot;
 
   return {
     id: booking.id,
@@ -235,15 +252,15 @@ export function transformProBooking(booking: BackendBooking): ProBooking {
     serviceId: '', // Backend doesn't provide this
     serviceName: booking.serviceCategory?.name || 'Service',
     serviceCategory: booking.serviceCategory?.name || '',
-    status: STATUS_MAPPING[booking.status] || 'pending',
-    scheduledDate: formatDateToFrench(booking.scheduledDate),
-    scheduledTime: '09:00', // Backend doesn't provide time slot separately
-    duration: '2h', // Default duration
+    status: (STATUS_MAPPING[booking.status.toUpperCase()] || 'pending') as any,
+    scheduledTime: slot ? new Date(slot).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
+    duration: '1h', // slot = 60 min
     price: booking.finalPrice || booking.priceEstimate || 0,
     location: booking.city?.name || '',
     notes: booking.description,
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt,
+    timeSlot: booking.timeSlot || '',
     unreadMessages: 0, // Backend doesn't provide this
   };
 }
@@ -253,6 +270,7 @@ export function transformClientBooking(booking: BackendBooking): ClientBooking {
   const proName = booking.pro?.proProfile
     ? `${booking.pro.proProfile.firstName} ${booking.pro.proProfile.lastName}`.trim()
     : 'Professionnel';
+  const slot = booking.timeSlot;
 
   return {
     id: booking.id,
@@ -262,27 +280,32 @@ export function transformClientBooking(booking: BackendBooking): ClientBooking {
     professionalAvatar: generateAvatar(proName),
     serviceName: booking.serviceCategory?.name || 'Service',
     serviceCategory: booking.serviceCategory?.name || '',
-    status: STATUS_MAPPING[booking.status] || 'pending',
-    scheduledDate: formatDateToFrench(booking.scheduledDate),
-    scheduledTime: '09:00', // Backend doesn't provide time slot separately
-    duration: '2h', // Default duration
+    status: (STATUS_MAPPING[booking.status.toUpperCase()] || 'pending') as any,
+    scheduledTime: slot ? new Date(slot).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
+    duration: '1h', // slot = 60 min
     price: booking.finalPrice || booking.priceEstimate || 0,
     location: booking.city?.name || '',
     notes: booking.description,
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt,
+    timeSlot: booking.timeSlot || '',
   };
 }
 
 // Transform backend pro service to frontend ProService format
 export interface TransformedProService {
   id: string;
-  proId: string;
+  proUserId?: string;
+  proId?: string; // legacy
   name: string;
   description: string;
   price: number;
+  pricingType: 'FIXED' | 'QUOTE';
+  basePrice?: number | null;
   duration: string;
   category: string;
+  serviceCategoryId?: string;
+  cityId?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -292,12 +315,17 @@ export interface TransformedProService {
 export function transformProService(service: BackendProService): TransformedProService {
   return {
     id: service.id,
+    proUserId: service.proProfileId, // upstream does not expose userId here, keep alias for compatibility
     proId: service.proProfileId,
     name: service.serviceCategory?.name || 'Service',
     description: service.description || '',
-    price: service.basePrice || 0,
+    price: service.basePrice ?? 0,
+    pricingType: service.pricingType || 'FIXED',
+    basePrice: service.basePrice ?? null,
     duration: '2h', // Default duration
     category: service.serviceCategory?.name || '',
+    serviceCategoryId: service.serviceCategoryId,
+    cityId: service.city?.id || service.cityId,
     isActive: service.isActive,
     createdAt: service.createdAt,
     updatedAt: service.updatedAt,

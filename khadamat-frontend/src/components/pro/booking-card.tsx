@@ -10,9 +10,19 @@ interface BookingCardProps {
   professional: ProfessionalDetail;
   onBookNow: () => void;
   onContact: () => void;
+  contactUrl?: string;
+  contactDisabled?: boolean;
+  contactDisabledReason?: string;
 }
 
-export function BookingCard({ professional, onBookNow, onContact }: BookingCardProps) {
+export function BookingCard({
+  professional,
+  onBookNow,
+  onContact,
+  contactUrl,
+  contactDisabled,
+  contactDisabledReason,
+}: BookingCardProps) {
   return (
     <Card className="p-6 sticky top-24">
       <div className="space-y-4">
@@ -55,6 +65,7 @@ export function BookingCard({ professional, onBookNow, onContact }: BookingCardP
             onClick={onBookNow}
             className="w-full bg-primary-600 hover:bg-primary-700 text-white"
             size="lg"
+            data-testid="booking-open"
           >
             <Calendar className="w-4 h-4 mr-2" />
             Réserver maintenant
@@ -65,6 +76,10 @@ export function BookingCard({ professional, onBookNow, onContact }: BookingCardP
             variant="outline"
             className="w-full"
             size="lg"
+            data-testid="contact-whatsapp"
+            data-contact-url={contactUrl || ''}
+            disabled={contactDisabled}
+            title={contactDisabledReason}
           >
             Contacter
           </Button>

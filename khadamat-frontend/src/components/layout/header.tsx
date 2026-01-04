@@ -155,6 +155,7 @@ export const Header: React.FC = () => {
                 <button
                   onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
                   className="flex items-center space-x-2 p-2 rounded-lg hover:bg-orange-50 transition-colors"
+                  data-testid="user-menu-button"
                 >
                   <div className="w-8 h-8 bg-[#F97B22] rounded-full flex items-center justify-center text-white">
                     <User className="h-4 w-4" />
@@ -174,7 +175,7 @@ export const Header: React.FC = () => {
                        <Settings className="w-4 h-4" /> Profil
                     </button>
                     <div className="border-t my-1"></div>
-                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2" data-testid="nav-logout">
                        <LogOut className="w-4 h-4" /> Déconnexion
                     </button>
                   </div>
