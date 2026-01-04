@@ -21,7 +21,7 @@ export interface CitySummary {
 export interface BookingSummary {
   id: string;
   status: string;
-  scheduledDate?: Date;
+  timeSlot: Date;
   description: string;
   priceEstimate?: number;
   finalPrice?: number;

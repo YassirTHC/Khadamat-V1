@@ -15,10 +15,17 @@ export const ProServices: React.FC<ProServicesProps> = ({ professional }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {professional.services.map((service) => (
           <div key={service.id} className="bg-surface rounded-lg p-4 border border-border-light">
-            <h3 className="font-semibold text-text-primary mb-2">{service.name}</h3>
+            <div className="flex items-center justify-between mb-2 gap-2">
+              <h3 className="font-semibold text-text-primary">{service.name}</h3>
+              <span className="text-xs px-2 py-1 rounded-full bg-primary-50 text-primary-700 font-semibold uppercase">
+                {service.pricingType === 'QUOTE' ? 'QUOTE' : 'FIXED'}
+              </span>
+            </div>
             <p className="text-sm text-text-secondary mb-3">{service.description}</p>
             <div className="flex justify-between items-center">
-              <span className="text-lg font-bold text-primary-600">{service.price} MAD</span>
+              <span className="text-lg font-bold text-primary-600">
+                {service.pricingType === 'QUOTE' ? 'Prix sur devis' : `${service.price ?? service.basePrice ?? 0} MAD`}
+              </span>
               <span className="text-sm text-text-muted">{service.duration}</span>
             </div>
           </div>

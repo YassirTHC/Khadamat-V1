@@ -1,4 +1,5 @@
-import { IsString, IsNumber } from 'class-validator';
+import { IsString, IsNumber, IsEnum, IsOptional, ValidateIf } from 'class-validator';
+import { PricingType } from '@prisma/client';
 
 export class CreateProServiceDto {
   @IsString()
@@ -7,8 +8,12 @@ export class CreateProServiceDto {
   @IsString()
   cityId: string;
 
+  @IsEnum(PricingType)
+  pricingType: PricingType;
+
+  @ValidateIf((o) => o.pricingType === PricingType.FIXED)
   @IsNumber()
-  basePrice: number;
+  basePrice?: number;
 
   @IsString()
   description: string;

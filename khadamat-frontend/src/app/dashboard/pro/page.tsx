@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { bookingApi, proApi } from '@/lib/api-client';
-import { BookingStatus } from '@/types/api';
+import { BookingStatus, ProProfile } from '@/types/api';
 import { 
   Calendar, Clock, Star, 
   Settings, User, Wallet, 
@@ -32,6 +32,10 @@ export default function ProDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [monthlyEarnings, setMonthlyEarnings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<ProProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const planId = 'premium-149-mad';
 
   // 1. Chargement des données sécurisé
   useEffect(() => {
@@ -45,19 +49,24 @@ export default function ProDashboard() {
         setLoading(true);
         console.log("Chargement Dashboard pour:", user.email);
 
-        const [bookingsRes, statsRes] = await Promise.all([
+        const [bookingsRes, statsRes, profileRes] = await Promise.all([
           bookingApi.getMyBookings(),
-          proApi.getStats()
+          proApi.getStats(),
+          proApi.getProfile(),
         ]);
 
         if (isMounted) {
           // Filtrage des réservations en attente
           const pending = Array.isArray(bookingsRes) 
-            ? bookingsRes.filter((b: any) => b.status === 'PENDING') 
+            ? bookingsRes.filter((b: any) => 
+                b.status === BookingStatus.REQUESTED || b.status === BookingStatus.ACCEPTED
+              ) 
             : [];
             
           setPendingBookings(pending);
           setStats(statsRes);
+          setProfile(profileRes);
+          setProfileLoading(false);
           
           // Données simulées pour le graphique (en attendant l'API historique)
           setMonthlyEarnings([
@@ -105,7 +114,7 @@ export default function ProDashboard() {
   // Handlers
   const handleAccept = async (bookingId: string) => {
     try {
-      await bookingApi.updateStatus(bookingId, BookingStatus.CONFIRMED);
+      await bookingApi.updateStatus(bookingId, BookingStatus.ACCEPTED);
       setPendingBookings(prev => prev.filter(b => b.id !== bookingId));
       toast.success('Demande acceptée');
     } catch (error) {
@@ -116,7 +125,7 @@ export default function ProDashboard() {
 
   const handleRefuse = async (bookingId: string) => {
     try {
-      await bookingApi.updateStatus(bookingId, BookingStatus.REJECTED);
+      await bookingApi.updateStatus(bookingId, BookingStatus.DECLINED);
       setPendingBookings(prev => prev.filter(b => b.id !== bookingId));
       toast.success('Demande refusée');
     } catch (error) {
@@ -125,8 +134,60 @@ export default function ProDashboard() {
     }
   };
 
+  const handleComplete = async (bookingId: string) => {
+    try {
+      await bookingApi.updateStatus(bookingId, BookingStatus.COMPLETED);
+      setPendingBookings(prev => prev.filter(b => b.id !== bookingId));
+      toast.success('Prestation marquée comme terminée');
+    } catch (error) {
+      console.error(error);
+      toast.error("Erreur lors de la complétion");
+    }
+  };
+
   const handleCreateService = () => {
     router.push('/dashboard/pro/services');
+  };
+
+  const missingFieldsLabels: Record<string, string> = {
+    phone: 'Téléphone vérifié',
+    cgu: 'CGU acceptées',
+    city: 'Ville',
+    bio: 'Bio (50+ caractères)',
+    service: 'Au moins 1 service actif',
+  };
+
+  const canUpgrade =
+    profile?.verificationStatus === 'APPROVED' &&
+    profile?.isActiveEligible &&
+    !profile?.isPremium;
+
+  const upgradeReason = !profile
+    ? 'Profil en chargement'
+    : profile.isPremium
+      ? 'Déjà Premium'
+      : profile.verificationStatus !== 'APPROVED'
+        ? 'Premium nécessite Verified'
+        : !profile.isActiveEligible
+          ? 'Profil incomplet'
+          : '';
+
+  const handleUpgrade = async () => {
+    if (!canUpgrade || upgradeLoading) return;
+    try {
+      setUpgradeLoading(true);
+      await proApi.upgradePremium(planId);
+      setProfile((prev) => (prev ? { ...prev, isPremium: true } : prev));
+      const refreshed = await proApi.getProfile();
+      setProfile(refreshed);
+      toast.success('Premium activé');
+    } catch (error: any) {
+      console.error(error);
+      const msg = error?.response?.data?.message || 'Erreur lors de l’activation Premium';
+      toast.error(msg);
+    } finally {
+      setUpgradeLoading(false);
+    }
   };
 
   if (loading) {
@@ -166,6 +227,63 @@ export default function ProDashboard() {
             <span className="font-bold">Créer un service</span>
           </Button>
         </motion.div>
+
+        {/* Visibilité / Statuts Pro */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="p-4 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle className={`h-5 w-5 ${profile?.verificationStatus === 'APPROVED' ? 'text-green-600' : 'text-gray-400'}`} />
+              <span data-testid="pro-badge-verified">
+                {profile?.verificationStatus === 'APPROVED' ? 'Verified' : 'Non vérifié'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Star className={`h-5 w-5 ${profile?.isPremium ? 'text-amber-500' : 'text-gray-400'}`} />
+              <span data-testid="pro-badge-premium">
+                {profile?.isPremium ? 'Premium actif' : 'Premium inactif'}
+              </span>
+            </div>
+            <div className="text-sm text-gray-600" data-testid="pro-verification-status">
+              Statut vérification : {profile?.verificationStatus ?? '—'}
+            </div>
+          </Card>
+          <Card className="p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className={`h-5 w-5 ${profile?.isActiveEligible ? 'text-green-600' : 'text-orange-500'}`} />
+              <span>
+                {profile?.isActiveEligible ? 'Profil actif et éligible' : 'Profil incomplet'}
+              </span>
+            </div>
+            <div data-testid="pro-missing-fields" className="text-sm text-gray-600">
+              {!profileLoading && profile && (!profile.missingFields || profile.missingFields.length === 0) && 'Aucun champ manquant'}
+              {profile?.missingFields?.length
+                ? (
+                  <ul className="list-disc list-inside space-y-1">
+                    {profile.missingFields.map((field) => (
+                      <li key={field}>{missingFieldsLabels[field] ?? field}</li>
+                    ))}
+                  </ul>
+                )
+                : null}
+            </div>
+          </Card>
+          <Card className="p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-amber-500" />
+              <span className="font-semibold">Upgrade Premium</span>
+            </div>
+            <p className="text-sm text-gray-600">Premium réservé aux pros vérifiés et profils complets.</p>
+            <Button
+              data-testid="pro-upgrade-premium"
+              disabled={!canUpgrade || upgradeLoading}
+              onClick={handleUpgrade}
+              className="w-full"
+            >
+              {upgradeLoading ? 'Activation...' : profile?.isPremium ? 'Déjà Premium' : 'Activer Premium'}
+            </Button>
+            {upgradeReason && <p className="text-xs text-gray-500">{upgradeReason}</p>}
+          </Card>
+        </div>
 
         {/* Stats Grid */}
         <motion.div
@@ -261,28 +379,45 @@ export default function ProDashboard() {
                               <User className="w-3 h-3" /> {booking.client?.firstName || 'Client'}
                           </p>
                           <p className="text-sm text-gray-500 flex items-center gap-1">
-                              <Calendar className="w-3 h-3" /> {new Date(booking.date).toLocaleDateString()}
+                              <Calendar className="w-3 h-3" /> {booking.timeSlot ? new Date(booking.timeSlot).toLocaleString() : 'Date à préciser'}
                           </p>
+                          <p className="text-xs text-gray-400">Statut : {booking.status}</p>
                           </div>
                           <div className="text-right flex flex-col items-end gap-3">
                           <p className="font-bold text-[#F97B22] text-lg">
                               {booking.totalPrice || booking.price} DH
                           </p>
                           <div className="flex space-x-2">
-                              <Button
-                              size="sm"
-                              className="bg-green-500 hover:bg-green-600 text-white border-none"
-                              onClick={() => handleAccept(booking.id)}
-                              >
-                              Accepter
-                              </Button>
-                              <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleRefuse(booking.id)}
-                              >
-                              Refuser
-                              </Button>
+                              {booking.status === BookingStatus.REQUESTED && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    className="bg-green-500 hover:bg-green-600 text-white border-none"
+                                    onClick={() => handleAccept(booking.id)}
+                                    data-testid="pro-accept"
+                                  >
+                                    Accepter
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={() => handleRefuse(booking.id)}
+                                    data-testid="pro-decline"
+                                  >
+                                    Refuser
+                                  </Button>
+                                </>
+                              )}
+                              {booking.status === BookingStatus.ACCEPTED && (
+                                <Button
+                                  size="sm"
+                                  className="bg-blue-500 hover:bg-blue-600 text-white border-none"
+                                  onClick={() => handleComplete(booking.id)}
+                                  data-testid="pro-complete"
+                                >
+                                  Marquer terminé
+                                </Button>
+                              )}
                           </div>
                           </div>
                       </div>

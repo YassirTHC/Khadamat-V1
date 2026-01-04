@@ -2,50 +2,58 @@ export interface ProService {
   id: string;
   name: string;
   category: string;
-  price: number;
+  pricingType?: 'FIXED' | 'QUOTE';
+  price?: number | null;
   description: string;
   isActive: boolean;
+  proUserId?: string;
+  proProfileId?: string;
 }
 
 export const mockProServices: ProService[] = [
   {
     id: '1',
-    name: 'Réparation de plomberie',
+    name: 'Reparation de plomberie',
     category: 'Plomberie',
+    pricingType: 'FIXED',
     price: 150,
-    description: 'Réparation de fuites, installation de robinets et dépannage plomberie générale.',
+    description: 'Reparation de fuites, installation de robinets et depannage plomberie general.',
     isActive: true,
   },
   {
     id: '2',
-    name: 'Installation électrique',
-    category: 'Électricité',
+    name: 'Installation electrique',
+    category: 'Electricite',
+    pricingType: 'FIXED',
     price: 200,
-    description: 'Installation de prises, interrupteurs et dépannage électrique de base.',
+    description: 'Installation de prises, interrupteurs et depannage electrique de base.',
     isActive: true,
   },
   {
     id: '3',
-    name: 'Peinture intérieure',
+    name: 'Peinture interieure',
     category: 'Peinture',
-    price: 300,
-    description: 'Peinture de murs intérieurs avec préparation et finition professionnelle.',
+    pricingType: 'QUOTE',
+    price: null,
+    description: 'Peinture de murs interieurs avec preparation et finition professionnelle.',
     isActive: false,
   },
   {
     id: '4',
     name: 'Jardinage complet',
     category: 'Jardinage',
+    pricingType: 'FIXED',
     price: 250,
-    description: 'Taille, arrosage et entretien général de jardins et espaces verts.',
+    description: 'Taille, arrosage et entretien general de jardins et espaces verts.',
     isActive: true,
   },
   {
     id: '5',
-    name: 'Réparation de climatisation',
+    name: 'Reparation de climatisation',
     category: 'Climatisation',
+    pricingType: 'FIXED',
     price: 400,
-    description: 'Dépannage et réparation de systèmes de climatisation et ventilation.',
+    description: 'Depannage et reparation de systemes de climatisation et ventilation.',
     isActive: true,
   },
 ];

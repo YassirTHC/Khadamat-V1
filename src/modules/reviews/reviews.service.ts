@@ -36,7 +36,7 @@ export class ReviewsService {
       throw new ForbiddenException('Access denied');
     }
 
-    if (booking.status !== ('completed' as BookingStatus)) {
+    if (booking.status !== BookingStatus.COMPLETED) {
       throw new ForbiddenException('Can only review completed bookings');
     }
 

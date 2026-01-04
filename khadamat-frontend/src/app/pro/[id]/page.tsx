@@ -22,6 +22,7 @@ import { ProTabs } from '@/components/pro/pro-tabs';
 import { ProPortfolio } from '@/components/pro/pro-portfolio';
 import { Skeleton } from '@/components/ui/skeleton';
 import { mockProServices } from '@/lib/mocks/services-mocks';
+import api from '@/lib/api-client';
 
 export default function ProfessionalProfilePage() {
   const params = useParams();
@@ -36,16 +37,46 @@ export default function ProfessionalProfilePage() {
     setBookingModalOpen(true);
   };
 
-  const handleContact = () => {
+  const buildWhatsappUrl = () => {
+    const phone = professional?.contactPhone || '';
+    if (!phone) return null;
+    const normalizedPhone = phone.replace(/[^0-9]/g, '').replace(/^00/, '');
+    const basePhone = normalizedPhone.startsWith('212') ? normalizedPhone : `212${normalizedPhone.replace(/^0/, '')}`;
+    const defaultMessage = `Bonjour ${professional?.fullName || ''}, je viens de Khadamat pour ${professional?.serviceCategoryName || 'vos services'}.`;
+    return `https://wa.me/${basePhone}?text=${encodeURIComponent(defaultMessage)}`;
+  };
+
+  const handleContact = async () => {
+    const contactUrl = buildWhatsappUrl();
     if (!user) {
-      // Redirect to login or show message
-      alert('Veuillez vous connecter pour contacter ce professionnel');
+      router.push('/auth/login');
       return;
     }
 
-    // For now, navigate to messages page
-    // In a real implementation, we might create a conversation here
-    router.push('/dashboard/client/messages');
+    if (!contactUrl) {
+      alert('Contact WhatsApp indisponible pour ce professionnel');
+      return;
+    }
+
+    if (!professional) {
+      return;
+    }
+
+    try {
+      await api.communication.create({
+        channel: 'WHATSAPP',
+        proId: professional.id,
+        metadata: {
+          source: 'pro-page',
+          proUserId: professional.id,
+          serviceCategoryId: professional.serviceCategoryId,
+        },
+      });
+    } catch (err) {
+      console.warn('Communication event log failed', err);
+    }
+
+    window.open(contactUrl, '_blank', 'noopener');
   };
 
   if (isLoading) {
@@ -199,6 +230,9 @@ export default function ProfessionalProfilePage() {
                   professional={professional}
                   onBookNow={handleBookNow}
                   onContact={handleContact}
+                  contactUrl={buildWhatsappUrl() || undefined}
+                  contactDisabled={!professional.contactPhone}
+                  contactDisabledReason={!professional.contactPhone ? 'Contact WhatsApp indisponible' : undefined}
                 />
               </div>
             </div>
@@ -212,7 +246,53 @@ export default function ProfessionalProfilePage() {
       <BookingModal
         isOpen={bookingModalOpen}
         onClose={() => setBookingModalOpen(false)}
-        selectedService={professional.services && professional.services.length > 0 ? {id: professional.services[0].id, proProfileId: professional.id, serviceCategoryId: professional.serviceCategoryId, cityId: professional.cityId, basePrice: professional.startingPrice, description: professional.services[0].description, isActive: true, createdAt: new Date(), updatedAt: new Date()} : {id: 'temp-service-id', proProfileId: mockProServices[0].proId, serviceCategoryId: mockProServices[0].category, cityId: '1', basePrice: mockProServices[0].price, description: mockProServices[0].description, isActive: true, createdAt: new Date(), updatedAt: new Date()}}
+        selectedService={
+          professional.services && professional.services.length > 0
+            ? ({
+                id: professional.services[0].id,
+                proUserId: professional.id,
+                proProfileId: professional.id,
+                categoryId: professional.serviceCategoryId,
+                serviceCategoryId: professional.serviceCategoryId,
+                cityId: professional.cityId,
+                category: {
+                  id: professional.serviceCategoryId,
+                  name: professional.serviceCategoryName || professional.services[0].name || 'Service',
+                  isActive: true,
+                },
+                title: professional.services[0].name || 'Service',
+                pricingType: professional.services[0].pricingType || 'FIXED',
+                price: professional.services[0].price ?? professional.startingPrice ?? null,
+                basePrice: professional.services[0].basePrice ?? professional.startingPrice ?? null,
+                description: professional.services[0].description,
+                duration: 60,
+                isActive: true,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              } as any)
+            : ({
+                id: 'temp-service-id',
+                proUserId: mockProServices[0].proUserId,
+                proProfileId: mockProServices[0].proProfileId || mockProServices[0].proUserId,
+                categoryId: mockProServices[0].category,
+                serviceCategoryId: mockProServices[0].category,
+                cityId: '1',
+                category: {
+                  id: mockProServices[0].category,
+                  name: mockProServices[0].name || 'Service',
+                  isActive: true,
+                },
+                title: mockProServices[0].name || 'Service',
+                pricingType: (mockProServices as any)[0]?.pricingType || 'FIXED',
+                price: (mockProServices as any)[0]?.price ?? null,
+                basePrice: (mockProServices as any)[0]?.price ?? null,
+                description: (mockProServices as any)[0]?.description,
+                duration: 60,
+                isActive: true,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              } as any)
+        }
       />
     </div>
   );

@@ -3,7 +3,6 @@ import {
   IsIn,
   IsNumber,
   IsDateString,
-  IsString,
 } from 'class-validator';
 import {
   BookingStatus,
@@ -17,10 +16,6 @@ export class UpdateBookingDto {
 
   @IsOptional()
   @IsDateString()
-  scheduledDate?: string;
-
-  @IsOptional()
-  @IsString()
   timeSlot?: string;
 
   @IsOptional()

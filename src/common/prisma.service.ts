@@ -1,9 +1,9 @@
-import { Inject, Injectable, OnModuleInit, INestApplication } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit, OnModuleDestroy, INestApplication } from '@nestjs/common';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { RedisCacheService } from './redis-cache.service';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit {
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(RedisCacheService)
     private cacheService: RedisCacheService,
@@ -14,6 +14,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   async onModuleInit() {
     await this.$connect();
   }
+
+   // Clean shutdown to avoid open handles in tests
+   async onModuleDestroy() {
+     await this.$disconnect();
+   }
 
   // ✅ CORRECTION : Typage de l'application Nest
   async enableShutdownHooks(app: INestApplication) {

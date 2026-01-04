@@ -63,7 +63,10 @@ export function Modal({
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
+          data-e2e="modal-container"
+        >
           
           {/* OVERLAY (Fond sombre) */}
           <motion.div
@@ -93,9 +96,14 @@ export function Modal({
             )}
             role="dialog"
             aria-modal="true"
+            aria-label={title || 'Modal'}
+            data-e2e="booking-modal-v2-root"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div
+              className="flex items-center justify-between px-6 py-4 border-b border-gray-100"
+              data-e2e="modal-header-probe"
+            >
               <h3 className="text-lg font-bold text-gray-900 font-heading">
                 {title}
               </h3>

@@ -17,13 +17,29 @@ enum Role {
 }
 
 enum BookingStatus {
-  QUOTED
+  REQUESTED
   ACCEPTED
-  SCHEDULED
-  IN_PROGRESS
+  DECLINED
+  CANCELLED_BY_CLIENT
+  CANCELLED_BY_PRO
   COMPLETED
-  DISPUTED
-  CANCELLED
+  EXPIRED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CommunicationChannel {
+  WHATSAPP
+  SMS
+}
+
+enum PricingType {
+  FIXED
+  QUOTE
 }
 
 model User {
@@ -37,6 +53,8 @@ model User {
    emailVerificationToken String? @unique
    passwordResetToken    String? @unique
    passwordResetExpires  DateTime?
+   cguAcceptedAt         DateTime?
+   phoneVerifiedAt       DateTime?
    lastLogin             DateTime?
    deletedAt             DateTime?
    createdAt             DateTime @default(now())
@@ -48,6 +66,7 @@ model User {
   // Booking relations
   bookingsAsClient      Booking[] @relation("BookingClient")
   bookingsAsPro         Booking[] @relation("BookingPro")
+  slotLocks             SlotLock[] @relation("SlotLockPro")
 
   // Conversation relations
   initiatedConversations Conversation[] @relation("ConversationParticipant1")
@@ -71,6 +90,10 @@ model User {
 
   // Refresh session relations
   refreshSessions       RefreshSession[]
+
+  // Communication events
+  communicationsAsClient CommunicationEvent[] @relation("CommunicationClient")
+  communicationsAsPro    CommunicationEvent[] @relation("CommunicationPro")
 
   @@index([email])
   @@index([phone])
@@ -101,6 +124,7 @@ model ProProfile {
    bio           String?
    address       String?
    cityId        String?
+   verificationStatus VerificationStatus @default(PENDING)
    isVerifiedPro Boolean  @default(false)
    isPremium     Boolean  @default(false)
    averageRating Float?
@@ -143,7 +167,8 @@ model ProService {
   proProfileId      String
   serviceCategoryId String
   cityId            String
-  basePrice         Float
+  pricingType       PricingType @default(FIXED)
+  basePrice         Float?
   minPrice          Float?
   maxPrice          Float?
   description       String?
@@ -169,11 +194,14 @@ model Booking {
   cityId            String
   description       String
   photos            String   @default("[]") // JSON array
-  scheduledDate     DateTime?
-  timeSlot          String?
+  timeSlot          DateTime
+  expiresAt         DateTime
+  acceptedAt        DateTime?
+  completedAt       DateTime?
   priceEstimate     Float?
   finalPrice        Float?
-  status            BookingStatus @default(QUOTED)
+  pricingType       PricingType @default(FIXED)
+  status            BookingStatus @default(REQUESTED)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @default(now())
 
@@ -184,13 +212,17 @@ model Booking {
   conversation    Conversation?
   review          Review?
   dispute         Dispute?
+  slotLock        SlotLock?
+  events          BookingEvent[]
+  communications  CommunicationEvent[]
 
   @@index([clientId])
   @@index([proId])
   @@index([serviceCategoryId])
   @@index([cityId])
   @@index([status])
-  @@index([scheduledDate])
+  @@index([timeSlot])
+  @@index([expiresAt])
 }
 
 model Conversation {
@@ -362,4 +394,56 @@ model RefreshSession {
 
     @@index([userId])
     @@index([expiresAt])
+}
+
+model SlotLock {
+  id        String   @id @default(cuid())
+  proId     String
+  timeSlot  DateTime
+  bookingId String   @unique
+  createdAt DateTime @default(now())
+
+  pro     User    @relation("SlotLockPro", fields: [proId], references: [id], onDelete: Cascade)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([proId, timeSlot], name: "slotlock_pro_timeslot_unique")
+  @@index([proId, timeSlot])
+}
+
+model BookingEvent {
+  id         String         @id @default(cuid())
+  bookingId  String
+  actorId    String?
+  actorRole  String?
+  fromStatus BookingStatus?
+  toStatus   BookingStatus
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime       @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([toStatus])
+  @@index([createdAt])
+}
+
+model CommunicationEvent {
+  id         String                 @id @default(cuid())
+  channel    CommunicationChannel
+  proId      String
+  clientId   String?
+  bookingId  String?
+  message    String?
+  metadata   Json?
+  createdAt  DateTime               @default(now())
+
+  pro        User                   @relation("CommunicationPro", fields: [proId], references: [id], onDelete: Cascade)
+  client     User?                  @relation("CommunicationClient", fields: [clientId], references: [id], onDelete: SetNull)
+  booking    Booking?               @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([proId])
+  @@index([clientId])
+  @@index([bookingId])
+  @@index([createdAt])
 }

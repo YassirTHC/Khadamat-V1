@@ -22,11 +22,6 @@ export default defineConfig({
     navigationTimeout: 60000,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    recordHar: {
-      path: 'test-results/smoke-test.har',
-      mode: 'full',
-      content: 'embed'
-    },
   },
 
   projects: [
@@ -38,9 +33,9 @@ export default defineConfig({
 
   webServer: [
     {
-      command: 'npm run dev',
+      command: 'set NODE_OPTIONS=--max-old-space-size=4096&& set NEXT_PUBLIC_API_URL=http://localhost:4000&& npm run dev',
       url: 'http://localhost:3000',
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 120000,
       stdout: 'ignore',
       stderr: 'pipe',

@@ -169,6 +169,7 @@ export default function LoginPage() {
                   className="block w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F97B22]/20 focus:border-[#F97B22] transition-all duration-200 sm:text-sm bg-gray-50/50 focus:bg-white"
                   value={formData.password}
                   onChange={handleChange}
+                  data-testid="auth-password"
                 />
                 <button
                   type="button"

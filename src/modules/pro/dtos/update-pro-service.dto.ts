@@ -1,4 +1,5 @@
-import { IsOptional, IsBoolean, IsString, IsNumber } from 'class-validator';
+import { IsOptional, IsBoolean, IsString, IsNumber, IsEnum, ValidateIf } from 'class-validator';
+import { PricingType } from '@prisma/client';
 
 export class UpdateProServiceDto {
   @IsOptional()
@@ -9,6 +10,11 @@ export class UpdateProServiceDto {
   @IsString()
   cityId?: string;
 
+  @IsOptional()
+  @IsEnum(PricingType)
+  pricingType?: PricingType;
+
+  @ValidateIf((o) => !o.pricingType || o.pricingType === PricingType.FIXED)
   @IsOptional()
   @IsNumber()
   basePrice?: number;

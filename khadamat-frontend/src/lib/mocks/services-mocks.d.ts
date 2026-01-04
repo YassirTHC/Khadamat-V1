@@ -55,7 +55,9 @@ export interface ProfessionalService {
     id: string;
     name: string;
     description: string;
-    price: number;
+    pricingType?: 'FIXED' | 'QUOTE';
+    price?: number;
+    basePrice?: number | null;
     duration: string;
     category: string;
 }
@@ -112,6 +114,7 @@ export interface ProfessionalDetail {
         saturday: string;
         sunday: string;
     };
+    contactPhone?: string;
 }
 export declare const mockProfessionals: Professional[];
 export declare const mockProfessionalDetails: Record<string, ProfessionalDetail>;
@@ -144,7 +147,7 @@ export interface ClientBooking {
     serviceName: string;
     serviceCategory: string;
     status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
-    scheduledDate: string;
+    timeSlot: string;
     scheduledTime: string;
     duration: string;
     price: number;
@@ -229,7 +232,7 @@ export interface ProBooking {
     serviceName: string;
     serviceCategory: string;
     status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
-    scheduledDate: string;
+    timeSlot: string;
     scheduledTime: string;
     duration: string;
     price: number;
@@ -241,7 +244,9 @@ export interface ProBooking {
 }
 export interface ProService {
     id: string;
-    proId: string;
+    proUserId: string;
+    proProfileId?: string;
+    proId?: string;
     name: string;
     description: string;
     price: number;

@@ -45,14 +45,13 @@ function ClientDashboardMessagesContent() {
         return (
           otherParticipant?.toLowerCase().includes(query) ||
           lastMessage?.content.toLowerCase().includes(query) ||
-          conversation.booking?.serviceCategory?.name.toLowerCase().includes(query)
+          (conversation.booking?.serviceCategory?.name?.toLowerCase() || '').includes(query)
         );
       });
     }
 
-    filtered = filtered.sort((a, b) =>
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
+    const sortVal = (conv: any) => new Date(conv?.updatedAt || 0).getTime();
+    filtered = filtered.sort((a, b) => sortVal(b) - sortVal(a));
 
     setFilteredConversations(filtered);
   }, [conversations, searchQuery]);
@@ -208,7 +207,7 @@ function ClientDashboardMessagesContent() {
                     {filteredConversations.map((conversation) => {
                       const msgs = conversation.messages || [];
                       const lastMessage = msgs.length > 0 ? msgs[msgs.length - 1] : null;
-                      const otherParticipant = getOtherParticipant(conversation);
+                      const otherParticipant = getOtherParticipant(conversation) || 'Utilisateur';
                       const unreadCount = getUnreadCount(conversation);
 
                       return (
@@ -235,7 +234,9 @@ function ClientDashboardMessagesContent() {
                                   {otherParticipant}
                                 </h4>
                                 <span className="text-xs text-text-muted">
-                                  {lastMessage ? new Date(lastMessage.createdAt).toLocaleDateString('fr-FR') : ''}
+                                  {lastMessage?.createdAt
+                                    ? new Date(lastMessage.createdAt).toLocaleDateString('fr-FR')
+                                    : ''}
                                 </span>
                               </div>
                               <p className="text-xs text-text-secondary truncate">
@@ -287,12 +288,12 @@ function ClientDashboardMessagesContent() {
                   <div className="flex items-center space-x-3 mb-4">
                     <div className="w-10 h-10 bg-[#EDEEEF] rounded-full flex items-center justify-center">
                       <span className="text-sm font-bold text-text-primary">
-                        {getOtherParticipant(selectedConversation).split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        {(getOtherParticipant(selectedConversation) || 'Utilisateur').split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </span>
                     </div>
                     <div>
                       <h3 className="font-semibold text-text-primary">
-                        {getOtherParticipant(selectedConversation)}
+                        {getOtherParticipant(selectedConversation) || 'Utilisateur'}
                       </h3>
                       <p className="text-sm text-text-secondary">
                         {selectedConversation.booking ? `${selectedConversation.booking.serviceCategory?.name || 'Service'}` : 'Conversation'}
@@ -313,12 +314,14 @@ function ClientDashboardMessagesContent() {
                                 : 'bg-[#EDEEEF] text-text-primary'
                             }`}>
                                 <p className="text-sm">{message.content}</p>
-                                <p className={`text-xs mt-1 ${isFromCurrentUser ? 'text-orange-100' : 'text-text-muted'}`}>
-                                {new Date(message.createdAt).toLocaleTimeString('fr-FR', {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                })}
-                                </p>
+                              <p className={`text-xs mt-1 ${isFromCurrentUser ? 'text-orange-100' : 'text-text-muted'}`}>
+                                {message.createdAt
+                                  ? new Date(message.createdAt).toLocaleTimeString('fr-FR', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : ''}
+                              </p>
                             </div>
                             </div>
                         );

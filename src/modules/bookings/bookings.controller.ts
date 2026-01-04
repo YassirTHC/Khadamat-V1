@@ -14,6 +14,7 @@ import { CreateBookingDto } from './dtos/create-booking.dto';
 import { BookingStatus, Role, User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Request } from 'express'; // Import du type Request Express
+import { UpdateBookingStatusDto } from './dtos/update-booking-status.dto';
 
 // ✅ CORRECTION : Interface standardisée pour ce projet
 interface RequestWithUser extends Request {
@@ -57,10 +58,10 @@ export class BookingsController {
   @Patch(':id/status')
   async updateBookingStatus(
     @Param('id') id: string,
-    @Body('status') status: BookingStatus,
+    @Body() dto: UpdateBookingStatusDto,
     @Req() req: RequestWithUser,
   ) {
     const user = req.user;
-    return this.bookingsService.updateStatus(id, status, user.id, user.role);
+    return this.bookingsService.updateStatus(id, dto.status, user.id, user.role);
   }
 }

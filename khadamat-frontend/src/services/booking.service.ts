@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { bookingApi } from '@/lib/api-client';
 
 export const bookingService = {

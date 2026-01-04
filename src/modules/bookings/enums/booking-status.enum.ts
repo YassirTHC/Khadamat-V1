@@ -1,11 +1,11 @@
 export enum BookingStatus {
-  QUOTED = 'quoted',
-  ACCEPTED = 'accepted',
-  SCHEDULED = 'scheduled',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
-  DISPUTED = 'disputed',
-  CANCELLED = 'cancelled',
+  REQUESTED = 'REQUESTED',
+  ACCEPTED = 'ACCEPTED',
+  DECLINED = 'DECLINED',
+  CANCELLED_BY_CLIENT = 'CANCELLED_BY_CLIENT',
+  CANCELLED_BY_PRO = 'CANCELLED_BY_PRO',
+  COMPLETED = 'COMPLETED',
+  EXPIRED = 'EXPIRED',
 }
 
 export const BOOKING_STATUS_VALUES = Object.values(BookingStatus);

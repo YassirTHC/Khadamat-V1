@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { authManager } from './auth';
 import { broadcastAuthEvent } from './auth-sync';
-import { BookingStatus, PlatformStats, ProProfile } from '@/types/api';
+import { BookingStatus, PlatformStats, ProProfile, CreateBookingPayload } from '@/types/api';
 
 export type PaginatedResponse<T> = {
   items: T[];
@@ -42,6 +42,14 @@ export type ProsListNormalized<T = ProProfile> = {
   hasPrev: boolean;
 };
 
+export type CommunicationEventPayload = {
+  channel: 'WHATSAPP' | 'SMS';
+  proId: string;
+  bookingId?: string;
+  message?: string;
+  metadata?: Record<string, any>;
+};
+
 function readAccessToken(): string | null {
   return authManager.getAccessToken();
 }
@@ -52,7 +60,12 @@ function getApiBaseUrl(): string {
     return '/api';
   } else {
     // Server/SSR: absolute path
-    const backendOrigin = process.env.BACKEND_ORIGIN || 'http://localhost:4000';
+    const defaultHost = process.env.API_HOST || 'localhost';
+    const defaultPort = process.env.API_PORT || '4000';
+    const backendOrigin =
+      process.env.BACKEND_ORIGIN ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      `http://${defaultHost}:${defaultPort}`;
     return `${backendOrigin}/api`;
   }
 }
@@ -196,7 +209,7 @@ axiosInstance.interceptors.response.use(
 // ==========================================
 
 export const bookingApi = {
-  create: async (data: any) => {
+  create: async (data: CreateBookingPayload) => {
     const response = await axiosInstance.post('/bookings', data);
     return response.data;
   },
@@ -215,8 +228,19 @@ export const bookingApi = {
 };
 
 export const proApi = {
+  getProfile: async (): Promise<ProProfile> => {
+    const response = await axiosInstance.get('/pro/profile');
+    return response.data;
+  },
   updateProfile: async (data: any) => {
     const response = await axiosInstance.put('/pro/profile', data);
+    return response.data;
+  },
+  upgradePremium: async (subscriptionPlanId: string) => {
+    const response = await axiosInstance.post('/subscriptions', {
+      subscriptionPlanId,
+      autoRenew: true,
+    });
     return response.data;
   },
   getStats: async () => {
@@ -273,6 +297,13 @@ export const userApi = {
     const response = await axiosInstance.patch('/user/change-password', data);
     return response.data;
   }
+};
+
+const communicationApi = {
+  create: async (payload: CommunicationEventPayload) => {
+    const response = await axiosInstance.post('/communication-events', payload);
+    return response.data;
+  },
 };
 
 // ==========================================
@@ -352,11 +383,12 @@ const apiClientInstance = {
     if (params?.page !== undefined) queryParams.set('page', params.page.toString());
 
     const verifiedVal = params?.isVerified ?? params?.verified;
-    if (verifiedVal !== undefined) {
-      queryParams.set('verified', String(verifiedVal));
+    if (verifiedVal === true) {
+      queryParams.set('verified', 'true');
     }
-    if (params?.premium !== undefined) {
-      queryParams.set('premium', String(params.premium));
+    // ne pas filtrer si false par défaut
+    if (params?.premium === true) {
+      queryParams.set('premium', 'true');
     }
 
     const qs = queryParams.toString();
@@ -409,6 +441,7 @@ const apiClientInstance = {
   pro: proApi,
   locations: locationsApi,
   user: userApi,
+  communication: communicationApi,
 };
 
 export default apiClientInstance;
