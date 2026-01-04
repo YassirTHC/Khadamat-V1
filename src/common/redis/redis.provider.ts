@@ -20,6 +20,21 @@ export const redisProvider: Provider = {
       process.env.REDIS_URL ||
       config?.url ||
       `redis://${config?.host || 'localhost'}:${config?.port || 6379}`;
+    const isTest = process.env.NODE_ENV === 'test';
+
+    if (isTest) {
+      // En test : on évite toute connexion réelle pour supprimer les ECONNREFUSED/handles ouverts
+      const stub = {
+        on: () => {},
+        connect: async () => {},
+        disconnect: async () => {},
+        quit: async () => {},
+        get: async () => null,
+        set: async () => null,
+      };
+      return stub;
+    }
+
     const client = createClient({
       url: redisUrl,
       password: config?.password,
@@ -27,22 +42,28 @@ export const redisProvider: Provider = {
     });
 
     client.on('error', (err) => {
-      if (process.env.NODE_ENV !== 'test') {
+      if (!isTest) {
         console.error('Redis Client Error:', err);
       }
     });
 
     try {
       await client.connect();
-      return client;
     } catch (err) {
-      // En test, on ne bloque pas si Redis n'est pas disponible
-      if (process.env.NODE_ENV === 'test') {
-        console.warn('Redis not available in test environment, using noop client');
-        return noopRedisClient();
-      }
-      throw err;
+      console.error('Redis connect failed (continuing without Redis):', err);
+      return noopRedisClient();
     }
+
+    // Nettoyage à la sortie du process
+    process.on('exit', async () => {
+      try {
+        await client.quit();
+      } catch (e) {
+        /* ignore */
+      }
+    });
+
+    return client;
   },
   inject: [ConfigService],
 };
