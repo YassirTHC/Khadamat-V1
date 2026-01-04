@@ -1,7 +1,6 @@
 # ========================================
 # CRITICAL - Secrets & Credentials
 # ========================================
-.env
 .env.local
 .env.production
 .env.development
